@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_file
 import requests
@@ -62,11 +63,25 @@ def dashboard():
     """Main dashboard page"""
     global forms_data, last_update, is_loading, error_message
     
-    return render_template('dashboard.html', 
-                         forms_count=len(forms_data),
-                         last_update=last_update,
-                         is_loading=is_loading,
-                         error_message=error_message)
+    try:
+        return render_template('dashboard.html', 
+                             forms_count=len(forms_data),
+                             last_update=last_update,
+                             is_loading=is_loading,
+                             error_message=error_message)
+    except Exception as e:
+        return f"Template Error: {str(e)}. Make sure dashboard.html is in templates/ folder."
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    return {
+        'status': 'ok',
+        'message': 'Flask app is running',
+        'python_version': sys.version,
+        'templates_folder': os.path.exists('templates'),
+        'dashboard_template': os.path.exists('templates/dashboard.html')
+    }
 
 @app.route('/api/load-data', methods=['POST'])
 def load_data():
