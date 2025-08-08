@@ -1,4 +1,18 @@
-#!/usr/bin/env python3
+import os
+import json
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, send_file
+import requests
+import base64
+import urllib3
+from dotenv import load_dotenv
+import logging
+import io
+import threading
+import time
+import webbrowser
+import urllib.parse
+from http.server import HTTPServer, BaseHTTPRequestHandler#!/usr/bin/env python3
 """
 ACC Forms Dashboard - Flask Web App
 Fetches ACC Forms data and displays in a web dashboard
@@ -6,7 +20,6 @@ Fetches ACC Forms data and displays in a web dashboard
 
 import os
 import json
-import pandas as pd
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_file
 import requests
