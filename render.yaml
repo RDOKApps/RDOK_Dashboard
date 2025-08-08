@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: acc-forms-dashboard
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AUTODESK_CLIENT_ID
+        sync: false
+      - key: AUTODESK_CLIENT_SECRET
+        sync: false
+      - key: AUTODESK_PROJECT_IDS
+        sync: false
