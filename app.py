@@ -1,19 +1,4 @@
-import os
-import json
-import sys
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file
-import requests
-import base64
-import urllib3
-from dotenv import load_dotenv
-import logging
-import io
-import threading
-import time
-import webbrowser
-import urllib.parse
-from http.server import HTTPServer, BaseHTTPRequestHandler#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 ACC Forms Dashboard - Flask Web App
 Fetches ACC Forms data and displays in a web dashboard
@@ -21,8 +6,9 @@ Fetches ACC Forms data and displays in a web dashboard
 
 import os
 import json
+import sys
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session
 import requests
 import base64
 import urllib3
@@ -35,7 +21,7 @@ import webbrowser
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Import our ACC Forms classes (we'll put them in a separate file)
+# Import our ACC Forms classes
 from acc_forms_client import AutodeskAuthenticator, AutodeskFormsClient, FormsCSVExporter
 
 # Load environment variables
@@ -77,6 +63,17 @@ def dashboard():
     except Exception as e:
         return f"Template Error: {str(e)}. Make sure dashboard.html is in templates/ folder."
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    return {
+        'status': 'ok',
+        'message': 'Flask app is running',
+        'python_version': sys.version,
+        'templates_folder': os.path.exists('templates'),
+        'dashboard_template': os.path.exists('templates/dashboard.html')
+    }
+
 @app.route('/auth/start')
 def start_auth():
     """Start Autodesk OAuth authentication"""
@@ -104,7 +101,6 @@ def start_auth():
         auth_url = f"https://developer.api.autodesk.com/authentication/v2/authorize?{urllib.parse.urlencode(params)}"
         
         # Store redirect URI in session for callback
-        from flask import session
         session['redirect_uri'] = redirect_uri
         
         return jsonify({'status': 'success', 'auth_url': auth_url})
@@ -141,7 +137,6 @@ def auth_callback():
             """
         
         # Exchange code for token
-        from flask import session
         redirect_uri = session.get('redirect_uri', request.url_root + 'auth/callback')
         
         if authenticator and authenticator.exchange_code_for_token(code, redirect_uri):
@@ -157,7 +152,9 @@ def auth_callback():
             <script>
                 setTimeout(function() {{
                     window.close();
-                    window.opener.location.reload();
+                    if (window.opener) {{
+                        window.opener.location.reload();
+                    }}
                 }}, 3000);
             </script>
             </body></html>
@@ -220,31 +217,6 @@ def load_forms_data_background():
         logger.error(f"Error loading forms data: {e}")
         error_message = str(e)
         is_loading = False
-
-@app.route('/')
-def dashboard():
-    """Main dashboard page"""
-    global forms_data, last_update, is_loading, error_message
-    
-    try:
-        return render_template('dashboard.html', 
-                             forms_count=len(forms_data),
-                             last_update=last_update,
-                             is_loading=is_loading,
-                             error_message=error_message)
-    except Exception as e:
-        return f"Template Error: {str(e)}. Make sure dashboard.html is in templates/ folder."
-
-@app.route('/health')
-def health_check():
-    """Health check endpoint"""
-    return {
-        'status': 'ok',
-        'message': 'Flask app is running',
-        'python_version': sys.version,
-        'templates_folder': os.path.exists('templates'),
-        'dashboard_template': os.path.exists('templates/dashboard.html')
-    }
 
 @app.route('/api/load-data', methods=['POST'])
 def load_data():
