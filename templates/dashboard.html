@@ -472,7 +472,6 @@
             async loadData() {
                 try {
                     this.hideAlerts();
-                    this.showLoadingState();
                     
                     const response = await fetch('/api/load-data', {
                         method: 'POST',
@@ -483,18 +482,43 @@
                     
                     const data = await response.json();
                     
-                    if (data.status === 'success') {
+                    if (data.status === 'auth_required') {
+                        // Need to authenticate with Autodesk
+                        this.showAlert('info', 'Opening Autodesk authentication...');
+                        
+                        // Get the auth URL
+                        const authResponse = await fetch('/auth/start');
+                        const authData = await authResponse.json();
+                        
+                        if (authData.status === 'success') {
+                            // Open authentication in popup
+                            const popup = window.open(
+                                authData.auth_url,
+                                'autodesk_auth',
+                                'width=600,height=700,scrollbars=yes,resizable=yes'
+                            );
+                            
+                            // Check if popup is closed (authentication complete)
+                            const checkClosed = setInterval(() => {
+                                if (popup.closed) {
+                                    clearInterval(checkClosed);
+                                    this.showAlert('info', 'Authentication completed. Checking status...');
+                                    // Check status after a delay
+                                    setTimeout(() => this.checkStatus(), 2000);
+                                }
+                            }, 1000);
+                        } else {
+                            this.showAlert('error', authData.message || 'Failed to start authentication');
+                        }
+                    } else if (data.status === 'success') {
                         this.showAlert('success', data.message);
-                        // Status will be updated by the periodic check
                         setTimeout(() => this.loadFormsData(), 2000);
                     } else {
                         this.showAlert('error', data.message);
-                        this.hideLoadingState();
                     }
                 } catch (error) {
                     console.error('Error loading data:', error);
                     this.showAlert('error', 'Failed to load data. Please try again.');
-                    this.hideLoadingState();
                 }
             }
 
