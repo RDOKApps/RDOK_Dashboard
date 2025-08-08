@@ -52,6 +52,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
 
+# Configure sessions for OAuth state
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+
 # Global variables for storing data
 forms_data = []
 last_update = None
