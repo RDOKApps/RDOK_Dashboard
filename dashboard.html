@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACC Forms Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .data-table td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .field-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .field-badge.custom {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .field-badge.tabular {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .no-data i {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                justify-content: center;
+            }
+
+            .status-info {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .data-table {
+                font-size: 14px;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 10px 8px;
+            }
+        }
+
+        /* Iframe friendly styles */
+        .iframe-mode {
+            margin: 0;
+            padding: 0;
+        }
+
+        .iframe-mode .container {
+            border-radius: 0;
+            box-shadow: none;
+            max-width: none;
+        }
+
+        .iframe-mode .header {
+            padding: 20px;
+        }
+
+        .iframe-mode .header h1 {
+            font-size: 1.8em;
+        }
+    </style>
+    <!-- Include Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-clipboard-list"></i> ACC Forms Dashboard</h1>
+            <p>Autodesk Construction Cloud Forms Data Viewer</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <button id="loadDataBtn" class="btn btn-primary">
+                    <i class="fas fa-sync-alt"></i> Load Data
+                </button>
+                <button id="exportCsvBtn" class="btn btn-secondary" disabled>
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+            </div>
+            
+            <div class="status-info">
+                <div id="statusBadge" class="status-badge status-loading" style="display: none;">
+                    Ready
+                </div>
+                <div id="formsCount">
+                    <i class="fas fa-file-alt"></i> No data loaded
+                </div>
+                <div id="lastUpdate" style="display: none;">
+                    <i class="fas fa-clock"></i> <span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Alert messages -->
+            <div id="alertSuccess" class="alert alert-success">
+                <i class="fas fa-check-circle"></i> <span></span>
+            </div>
+            <div id="alertError" class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i> <span></span>
+            </div>
+            <div id="alertInfo" class="alert alert-info">
+                <i class="fas fa-info-circle"></i> <span></span>
+            </div>
+
+            <!-- Loading state -->
+            <div id="loadingState" class="no-data" style="display: none;">
+                <div class="loading-spinner"></div>
+                <h3 style="margin-top: 20px;">Loading ACC Forms Data...</h3>
+                <p>This may take a few moments while we fetch your forms from Autodesk Construction Cloud.</p>
+            </div>
+
+            <!-- No data state -->
+            <div id="noDataState" class="no-data">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>No Forms Data</h3>
+                <p>Click "Load Data" to fetch your ACC forms and display them here.</p>
+            </div>
+
+            <!-- Data table -->
+            <div id="dataContainer" style="display: none;">
+                <h3><i class="fas fa-table"></i> Forms Data</h3>
+                <table id="dataTable" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Form #</th>
+                            <th>Name</th>
+                            <th>Template</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Custom Fields</th>
+                            <th>Tables</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ACCFormsDashboard {
+            constructor() {
+                this.isLoading = false;
+                this.formsData = [];
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.checkStatus();
+                
+                // Check if we're in an iframe
+                if (window.self !== window.top) {
+                    document.body.classList.add('iframe-mode');
+                }
+            }
+
+            initializeElements() {
+                this.loadDataBtn = document.getElementById('loadDataBtn');
+                this.exportCsvBtn = document.getElementById('exportCsvBtn');
+                this.statusBadge = document.getElementById('statusBadge');
+                this.formsCount = document.getElementById('formsCount');
+                this.lastUpdate = document.getElementById('lastUpdate');
+                this.alertSuccess = document.getElementById('alertSuccess');
+                this.alertError = document.getElementById('alertError');
+                this.alertInfo = document.getElementById('alertInfo');
+                this.loadingState = document.getElementById('loadingState');
+                this.noDataState = document.getElementById('noDataState');
+                this.dataContainer = document.getElementById('dataContainer');
+                this.dataTable = document.getElementById('dataTable');
+            }
+
+            bindEvents() {
+                this.loadDataBtn.addEventListener('click', () => this.loadData());
+                this.exportCsvBtn.addEventListener('click', () => this.exportCSV());
+                
+                // Auto-refresh status every 5 seconds when loading
+                setInterval(() => {
+                    if (this.isLoading) {
+                        this.checkStatus();
+                    }
+                }, 5000);
+            }
+
+            async checkStatus() {
+                try {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    
+                    this.updateStatus(data);
+                } catch (error) {
+                    console.error('Error checking status:', error);
+                }
+            }
+
+            updateStatus(status) {
+                this.isLoading = status.is_loading;
+                
+                // Update loading state
+                if (this.isLoading) {
+                    this.showLoadingState();
+                    this.loadDataBtn.disabled = true;
+                    this.loadDataBtn.innerHTML = '<div class="loading-spinner"></div> Loading...';
+                } else {
+                    this.loadDataBtn.disabled = false;
+                    this.loadDataBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Load Data';
+                }
+                
+                // Update forms count
+                const count = status.forms_count || 0;
+                this.formsCount.innerHTML = `<i class="fas fa-file-alt"></i> ${count} forms loaded`;
+                
+                // Update export button
+                this.exportCsvBtn.disabled = count === 0 || this.isLoading;
+                
+                // Update last update time
+                if (status.last_update) {
+                    const updateTime = new Date(status.last_update).toLocaleString();
+                    this.lastUpdate.querySelector('span').textContent = `Last updated: ${updateTime}`;
+                    this.lastUpdate.style.display = 'block';
+                }
+                
+                // Update status badge
+                if (this.isLoading) {
+                    this.statusBadge.className = 'status-badge status-loading';
+                    this.statusBadge.textContent = 'Loading';
+                    this.statusBadge.style.display = 'block';
+                } else if (status.error_message) {
+                    this.statusBadge.className = 'status-badge status-error';
+                    this.statusBadge.textContent = 'Error';
+                    this.statusBadge.style.display = 'block';
+                    this.showAlert('error', status.error_message);
+                } else if (count > 0) {
+                    this.statusBadge.className = 'status-badge status-success';
+                    this.statusBadge.textContent = 'Ready';
+                    this.statusBadge.style.display = 'block';
+                }
+                
+                // Load and display data if available and not currently loading
+                if (count > 0 && !this.isLoading && this.formsData.length === 0) {
+                    this.loadFormsData();
+                }
+            }
+
+            async loadData() {
+                try {
+                    this.hideAlerts();
+                    this.showLoadingState();
+                    
+                    const response = await fetch('/api/load-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.showAlert('success', data.message);
+                        // Status will be updated by the periodic check
+                        setTimeout(() => this.loadFormsData(), 2000);
+                    } else {
+                        this.showAlert('error', data.message);
+                        this.hideLoadingState();
+                    }
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    this.showAlert('error', 'Failed to load data. Please try again.');
+                    this.hideLoadingState();
+                }
+            }
+
+            async loadFormsData() {
+                try {
+                    const response = await fetch('/api/forms-data');
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.formsData = data.data;
+                        this.displayFormsData();
+                        this.hideLoadingState();
+                    } else {
+                        this.showAlert('error', data.message);
+                        this.hideLoadingState();
+                    }
+                } catch (error) {
+                    console.error('Error loading forms data:', error);
+                    this.showAlert('error', 'Failed to load forms data.');
+                    this.hideLoadingState();
+                }
+            }
+
+            displayFormsData() {
+                if (this.formsData.length === 0) {
+                    this.showNoDataState();
+                    return;
+                }
+
+                const tbody = this.dataTable.querySelector('tbody');
+                tbody.innerHTML = '';
+
+                this.formsData.forEach(form => {
+                    const row = document.createElement('tr');
+                    
+                    // Format date
+                    const formDate = form.formDate ? new Date(form.formDate).toLocaleDateString() : 'N/A';
+                    const updatedAt = form.updatedAt ? new Date(form.updatedAt).toLocaleDateString() : 'N/A';
+                    
+                    // Custom fields badges
+                    let customFieldsHtml = '';
+                    if (form.customFields && Object.keys(form.customFields).length > 0) {
+                        for (const [fieldName, fieldValue] of Object.entries(form.customFields)) {
+                            if (fieldValue) {
+                                customFieldsHtml += `<span class="field-badge custom" title="${fieldValue}">${fieldName}</span>`;
+                            }
+                        }
+                    }
+                    if (!customFieldsHtml) customFieldsHtml = '<span style="color: #6c757d;">None</span>';
+                    
+                    // Tabular data badges
+                    let tabularHtml = '';
+                    if (form.tabularData && Object.keys(form.tabularData).length > 0) {
+                        for (const [tableName, tableInfo] of Object.entries(form.tabularData)) {
+                            tabularHtml += `<span class="field-badge tabular" title="${tableInfo.columns.join(', ')}">${tableName} (${tableInfo.rowCount})</span>`;
+                        }
+                    }
+                    if (!tabularHtml) tabularHtml = '<span style="color: #6c757d;">None</span>';
+                    
+                    row.innerHTML = `
+                        <td><strong>${form.formNum || 'N/A'}</strong></td>
+                        <td>${form.name || 'Unnamed'}</td>
+                        <td>${form.templateName || 'Unknown'}</td>
+                        <td><span class="field-badge">${form.status || 'Unknown'}</span></td>
+                        <td>${formDate}</td>
+                        <td>${customFieldsHtml}</td>
+                        <td>${tabularHtml}</td>
+                        <td>${updatedAt}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+
+                this.dataContainer.style.display = 'block';
+                this.noDataState.style.display = 'none';
+            }
+
+            async exportCSV() {
+                try {
+                    this.showAlert('info', 'Preparing CSV export...');
+                    
+                    const response = await fetch('/api/export-csv');
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = response.headers.get('Content-Disposition')?.split('filename=')[1] || 'forms_export.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        this.showAlert('success', 'CSV file downloaded successfully!');
+                    } else {
+                        const error = await response.json();
+                        this.showAlert('error', error.message || 'Failed to export CSV');
+                    }
+                } catch (error) {
+                    console.error('Error exporting CSV:', error);
+                    this.showAlert('error', 'Failed to export CSV. Please try again.');
+                }
+            }
+
+            showLoadingState() {
+                this.loadingState.style.display = 'block';
+                this.noDataState.style.display = 'none';
+                this.dataContainer.style.display = 'none';
+            }
+
+            hideLoadingState() {
+                this.loadingState.style.display = 'none';
+                if (this.formsData.length === 0) {
+                    this.showNoDataState();
+                }
+            }
+
+            showNoDataState() {
+                this.noDataState.style.display = 'block';
+                this.dataContainer.style.display = 'none';
+            }
+
+            showAlert(type, message) {
+                this.hideAlerts();
+                
+                let alertElement;
+                switch (type) {
+                    case 'success':
+                        alertElement = this.alertSuccess;
+                        break;
+                    case 'error':
+                        alertElement = this.alertError;
+                        break;
+                    case 'info':
+                        alertElement = this.alertInfo;
+                        break;
+                }
+                
+                if (alertElement) {
+                    alertElement.querySelector('span').textContent = message;
+                    alertElement.style.display = 'block';
+                    
+                    // Auto-hide after 5 seconds
+                    setTimeout(() => {
+                        alertElement.style.display = 'none';
+                    }, 5000);
+                }
+            }
+
+            hideAlerts() {
+                this.alertSuccess.style.display = 'none';
+                this.alertError.style.display = 'none';
+                this.alertInfo.style.display = 'none';
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ACCFormsDashboard();
+        });
+    </script>
+</body>
+</html>
