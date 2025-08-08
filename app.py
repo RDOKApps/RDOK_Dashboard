@@ -57,6 +57,165 @@ forms_data = []
 last_update = None
 is_loading = False
 error_message = None
+authenticator = None  # Store authenticator globally
+
+@app.route('/')
+def dashboard():
+    """Main dashboard page"""
+    global forms_data, last_update, is_loading, error_message
+    
+    try:
+        return render_template('dashboard.html', 
+                             forms_count=len(forms_data),
+                             last_update=last_update,
+                             is_loading=is_loading,
+                             error_message=error_message)
+    except Exception as e:
+        return f"Template Error: {str(e)}. Make sure dashboard.html is in templates/ folder."
+
+@app.route('/auth/start')
+def start_auth():
+    """Start Autodesk OAuth authentication"""
+    global authenticator
+    
+    try:
+        # Get configuration from environment
+        client_id = os.getenv('AUTODESK_CLIENT_ID')
+        client_secret = os.getenv('AUTODESK_CLIENT_SECRET')
+        
+        if not all([client_id, client_secret]):
+            return jsonify({'status': 'error', 'message': 'Missing Autodesk credentials'})
+        
+        authenticator = AutodeskAuthenticator(client_id, client_secret)
+        
+        # Build authorization URL
+        redirect_uri = request.url_root + 'auth/callback'
+        params = {
+            'response_type': 'code',
+            'client_id': client_id,
+            'redirect_uri': redirect_uri,
+            'scope': 'data:read account:read'
+        }
+        
+        auth_url = f"https://developer.api.autodesk.com/authentication/v2/authorize?{urllib.parse.urlencode(params)}"
+        
+        # Store redirect URI in session for callback
+        from flask import session
+        session['redirect_uri'] = redirect_uri
+        
+        return jsonify({'status': 'success', 'auth_url': auth_url})
+        
+    except Exception as e:
+        logger.error(f"Error starting auth: {e}")
+        return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/auth/callback')
+def auth_callback():
+    """Handle OAuth callback from Autodesk"""
+    global authenticator, is_loading
+    
+    try:
+        code = request.args.get('code')
+        error = request.args.get('error')
+        
+        if error:
+            error_message = f"Authentication failed: {error}"
+            return f"""
+            <html><body style='font-family: Arial; text-align: center; padding: 50px;'>
+            <h2>❌ Authentication Failed</h2>
+            <p>{error_message}</p>
+            <p><a href="/">Return to Dashboard</a></p>
+            </body></html>
+            """
+        
+        if not code:
+            return f"""
+            <html><body style='font-family: Arial; text-align: center; padding: 50px;'>
+            <h2>❌ No Authorization Code</h2>
+            <p><a href="/">Return to Dashboard</a></p>
+            </body></html>
+            """
+        
+        # Exchange code for token
+        from flask import session
+        redirect_uri = session.get('redirect_uri', request.url_root + 'auth/callback')
+        
+        if authenticator and authenticator.exchange_code_for_token(code, redirect_uri):
+            # Authentication successful - start loading data in background
+            is_loading = True
+            threading.Thread(target=load_forms_data_background, daemon=True).start()
+            
+            return f"""
+            <html><body style='font-family: Arial; text-align: center; padding: 50px;'>
+            <h2>✅ Authentication Successful!</h2>
+            <p>Loading your ACC Forms data...</p>
+            <p><a href="/">Return to Dashboard</a></p>
+            <script>
+                setTimeout(function() {{
+                    window.close();
+                    window.opener.location.reload();
+                }}, 3000);
+            </script>
+            </body></html>
+            """
+        else:
+            return f"""
+            <html><body style='font-family: Arial; text-align: center; padding: 50px;'>
+            <h2>❌ Token Exchange Failed</h2>
+            <p>Could not complete authentication.</p>
+            <p><a href="/">Return to Dashboard</a></p>
+            </body></html>
+            """
+        
+    except Exception as e:
+        logger.error(f"Callback error: {e}")
+        return f"""
+        <html><body style='font-family: Arial; text-align: center; padding: 50px;'>
+        <h2>❌ Authentication Error</h2>
+        <p>{str(e)}</p>
+        <p><a href="/">Return to Dashboard</a></p>
+        </body></html>
+        """
+
+def load_forms_data_background():
+    """Load forms data in background thread"""
+    global forms_data, last_update, is_loading, error_message, authenticator
+    
+    try:
+        if not authenticator or not authenticator.access_token:
+            error_message = "No valid authentication token"
+            is_loading = False
+            return
+        
+        # Get project ID
+        project_ids = os.getenv('AUTODESK_PROJECT_IDS', '').split(',')
+        if not project_ids[0]:
+            error_message = "No project ID configured"
+            is_loading = False
+            return
+        
+        project_id = project_ids[0].strip()
+        
+        # Fetch forms data
+        logger.info("Fetching forms data in background...")
+        forms_client = AutodeskFormsClient(authenticator.access_token)
+        forms = forms_client.get_all_forms(project_id)
+        
+        if forms:
+            forms_data = forms
+            last_update = datetime.now()
+            error_message = None
+            logger.info(f"Successfully loaded {len(forms)} forms")
+        else:
+            forms_data = []
+            error_message = "No forms found in project"
+        
+        is_loading = False
+        
+    except Exception as e:
+        logger.error(f"Error loading forms data: {e}")
+        error_message = str(e)
+        is_loading = False
 
 @app.route('/')
 def dashboard():
@@ -85,14 +244,11 @@ def health_check():
 
 @app.route('/api/load-data', methods=['POST'])
 def load_data():
-    """API endpoint to load ACC Forms data"""
+    """API endpoint to start authentication and load ACC Forms data"""
     global forms_data, last_update, is_loading, error_message
     
     if is_loading:
         return jsonify({'status': 'error', 'message': 'Data is already being loaded'})
-    
-    is_loading = True
-    error_message = None
     
     try:
         # Get configuration from environment
@@ -101,46 +257,17 @@ def load_data():
         project_ids = os.getenv('AUTODESK_PROJECT_IDS', '').split(',')
         
         if not all([client_id, client_secret, project_ids[0]]):
-            raise ValueError("Missing required environment variables")
+            return jsonify({'status': 'error', 'message': 'Missing required environment variables'})
         
-        project_id = project_ids[0].strip()
-        
-        # Authenticate with Autodesk
-        logger.info("Starting Autodesk authentication...")
-        authenticator = AutodeskAuthenticator(client_id, client_secret)
-        
-        # For web deployment, we'll use a simplified auth method
-        # In production, you might want to implement proper OAuth flow
-        if not authenticator.authenticate():
-            raise Exception("Autodesk authentication failed")
-        
-        # Fetch forms data
-        logger.info("Fetching forms data...")
-        forms_client = AutodeskFormsClient(authenticator.access_token)
-        forms = forms_client.get_all_forms(project_id)
-        
-        if not forms:
-            forms_data = []
-            last_update = datetime.now()
-            is_loading = False
-            return jsonify({'status': 'success', 'message': 'No forms found', 'count': 0})
-        
-        # Store the data globally
-        forms_data = forms
-        last_update = datetime.now()
-        is_loading = False
-        
-        logger.info(f"Successfully loaded {len(forms)} forms")
+        # Start authentication process
         return jsonify({
-            'status': 'success', 
-            'message': f'Successfully loaded {len(forms)} forms',
-            'count': len(forms)
+            'status': 'auth_required',
+            'message': 'Authentication required. Please click the authentication link.',
+            'auth_url': '/auth/start'
         })
         
     except Exception as e:
-        logger.error(f"Error loading data: {e}")
-        error_message = str(e)
-        is_loading = False
+        logger.error(f"Error in load_data: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/api/forms-data')
